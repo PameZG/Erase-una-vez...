@@ -6,7 +6,7 @@
 
 Es muy sencillo. Solo tienes que acceder al juego a través del siguiente enlace:
 
-**[¡Haz clic aquí para jugar!](https://github.com/PameZG/Erase-una-vez....git)**
+**[¡Haz clic aquí para jugar!](https://pamezg.github.io/Erase-una-vez.../)**
 
 ## 🎯 Características
 
