@@ -192,7 +192,7 @@
             }
         }
         
-        gridContainer.addEventListener('mousedown', e => {
+        gridContainer.addEventListener('touchmove', e => {
             if (e.target.classList.contains('grid-cell')) {
                 isSelecting = true;
                 selection = [e.target];
@@ -200,7 +200,7 @@
             }
         });
 
-        gridContainer.addEventListener('mouseover', e => {
+        gridContainer.addEventListener('touchmove', e => {
             if (isSelecting && e.target.classList.contains('grid-cell')) {
                 document.querySelectorAll('.selecting').forEach(el => el.classList.remove('selecting'));
                 const startCell = selection[0];
@@ -214,7 +214,7 @@
             }
         });
 
-        window.addEventListener('mouseup', () => {
+        window.addEventListener('touchmove', () => {
             if (isSelecting) {
                 isSelecting = false;
                 checkSelection();
