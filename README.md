@@ -6,7 +6,7 @@
 
 Es muy sencillo. Solo tienes que acceder al juego a través del siguiente enlace:
 
-**[¡Haz clic aquí para jugar!](https://TU_USUARIO.github.io/sopa-de-letras-institucion/)**
+**[¡Haz clic aquí para jugar!]([https://TU_USUARIO.github.io/sopa-de-letras-institucion/](https://github.com/PameZG/Erase-una-vez....git))**
 
 ## 🎯 Características
 
