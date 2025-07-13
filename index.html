@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Kalam:wght@700&display=swap" rel="stylesheet">
     <style>
-        /* FIX: Updated color palette to an indigo/purple theme */
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f5f3ff; /* Light purple background */
@@ -20,6 +19,7 @@
             grid-template-columns: repeat(15, minmax(0, 1fr));
             gap: 4px;
             user-select: none;
+            -webkit-user-select: none; /* For Safari */
             max-width: 500px;
             margin: auto;
         }
@@ -60,7 +60,6 @@
             <p class="text-gray-600 mt-2">Encuentra las palabras ocultas basándote en las pistas.</p>
         </div>
 
-        <!-- FIX: Changed layout to a single column and centered items -->
         <div class="flex flex-col items-center gap-8">
             <!-- Sopa de Letras -->
             <div class="w-full flex justify-center items-center">
@@ -192,34 +191,59 @@
             }
         }
         
-        gridContainer.addEventListener('touchstart', e => {
-            if (e.target.classList.contains('grid-cell')) {
-                isSelecting = true;
-                selection = [e.target];
-                e.target.classList.add('selecting');
-            }
-        });
+        // --- Event Handlers ---
 
-        gridContainer.addEventListener('touchstart', e => {
-            if (isSelecting && e.target.classList.contains('grid-cell')) {
+        function handleSelectionStart(target) {
+            if (target.classList.contains('grid-cell')) {
+                isSelecting = true;
+                selection = [target];
+                target.classList.add('selecting');
+            }
+        }
+
+        function handleSelectionMove(target) {
+            if (isSelecting && target.classList.contains('grid-cell')) {
                 document.querySelectorAll('.selecting').forEach(el => el.classList.remove('selecting'));
                 const startCell = selection[0];
-                const endCell = e.target;
+                const endCell = target;
+                
                 const startRow = parseInt(startCell.dataset.row);
                 const startCol = parseInt(startCell.dataset.col);
                 const endRow = parseInt(endCell.dataset.row);
                 const endCol = parseInt(endCell.dataset.col);
+
                 selection = getCellsBetween(startRow, startCol, endRow, endCol);
                 selection.forEach(cell => cell.classList.add('selecting'));
             }
-        });
+        }
 
-        window.addEventListener('touchstart', () => {
+        function handleSelectionEnd() {
             if (isSelecting) {
                 isSelecting = false;
                 checkSelection();
                 document.querySelectorAll('.selecting').forEach(el => el.classList.remove('selecting'));
             }
+        }
+
+        // Mouse Events
+        gridContainer.addEventListener('mousedown', e => handleSelectionStart(e.target));
+        gridContainer.addEventListener('mouseover', e => handleSelectionMove(e.target));
+        window.addEventListener('mouseup', handleSelectionEnd);
+
+        // FIX: Added Touch Events for mobile compatibility
+        gridContainer.addEventListener('touchstart', e => {
+            e.preventDefault();
+            handleSelectionStart(e.touches[0].target);
+        });
+        gridContainer.addEventListener('touchmove', e => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const element = document.elementFromPoint(touch.clientX, touch.clientY);
+            handleSelectionMove(element);
+        });
+        window.addEventListener('touchend', e => {
+            e.preventDefault();
+            handleSelectionEnd();
         });
 
         function getCellsBetween(startRow, startCol, endRow, endCol) {
