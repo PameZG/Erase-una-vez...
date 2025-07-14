@@ -20,6 +20,7 @@
             gap: 4px;
             user-select: none;
             -webkit-user-select: none;
+            touch-action: none; /* Prevents scrolling while selecting on mobile */
             max-width: 500px;
             margin: auto;
         }
@@ -247,7 +248,8 @@
         }
 
         // --- Flujo del Juego ---
-        function handleStartGame() {
+        function handleStartGame(e) {
+            e.preventDefault();
             playerName = playerNameInput.value.trim();
             if (playerName) {
                 nameModal.style.display = 'none';
@@ -258,20 +260,15 @@
                 alertModal.innerHTML = `
                     <div class="modal-content">
                         <p class="text-lg text-gray-700">Por favor, ingresa un nombre.</p>
-                        <button onclick="this.parentElement.parentElement.remove()" class="mt-4 bg-indigo-500 text-white font-bold py-2 px-4 rounded">Entendido</button>
+                        <button id="close-alert-button" class="mt-4 bg-indigo-500 text-white font-bold py-2 px-4 rounded">Entendido</button>
                     </div>
                 `;
                 document.body.appendChild(alertModal);
+                document.getElementById('close-alert-button').addEventListener('pointerup', () => {
+                   alertModal.remove();
+                });
             }
         }
-
-        startGameButton.addEventListener('click', handleStartGame);
-        // FIX: Changed to 'touchend' for better mobile reliability
-        startGameButton.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            handleStartGame();
-        });
-
 
         // --- Inicialización ---
         async function main() {
@@ -313,7 +310,8 @@
                 document.body.appendChild(modal);
 
                 const closeButton = document.getElementById('close-congrats-button');
-                const closeModal = () => {
+                const closeModal = (e) => {
+                    e.preventDefault();
                     const modalToRemove = document.getElementById('congrats-modal');
                     if (modalToRemove) {
                         modalToRemove.remove();
@@ -324,13 +322,7 @@
                     leaderboardView.classList.remove('hidden');
                     resetButton.textContent = 'Jugar de Nuevo';
                 };
-
-                closeButton.addEventListener('click', closeModal);
-                // FIX: Changed to 'touchend' for better mobile reliability
-                closeButton.addEventListener('touchend', (e) => {
-                    e.preventDefault();
-                    closeModal();
-                });
+                closeButton.addEventListener('pointerup', closeModal);
             }
         }
         
@@ -413,16 +405,25 @@
             }
         }
         
-        function handleSelectionStart(target) {
-            if (target && target.classList.contains('grid-cell')) {
+        function handleSelectionStart(e) {
+            e.preventDefault();
+            const target = e.target.closest('.grid-cell');
+            if (target) {
                 isSelecting = true;
                 selection = [target];
                 target.classList.add('selecting');
             }
         }
 
-        function handleSelectionMove(target) {
-            if (isSelecting && target && target.classList.contains('grid-cell')) {
+        function handleSelectionMove(e) {
+            e.preventDefault();
+            if (!isSelecting) return;
+            
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const target = document.elementFromPoint(clientX, clientY);
+
+            if (target && target.classList.contains('grid-cell')) {
                 document.querySelectorAll('.selecting').forEach(el => el.classList.remove('selecting'));
                 const startCell = selection[0];
                 const endCell = target;
@@ -437,7 +438,8 @@
             }
         }
 
-        function handleSelectionEnd() {
+        function handleSelectionEnd(e) {
+            e.preventDefault();
             if (isSelecting) {
                 isSelecting = false;
                 checkSelection();
@@ -445,24 +447,13 @@
             }
         }
 
-        gridContainer.addEventListener('mousedown', e => handleSelectionStart(e.target));
-        gridContainer.addEventListener('mouseover', e => handleSelectionMove(e.target));
-        window.addEventListener('mouseup', handleSelectionEnd);
+        // FIX: Replaced all input events with Pointer Events for universal compatibility
+        startGameButton.addEventListener('pointerup', handleStartGame);
+        
+        gridContainer.addEventListener('pointerdown', handleSelectionStart);
+        gridContainer.addEventListener('pointermove', handleSelectionMove);
+        window.addEventListener('pointerup', handleSelectionEnd);
 
-        gridContainer.addEventListener('touchstart', e => {
-            e.preventDefault();
-            handleSelectionStart(e.touches[0].target);
-        }, { passive: false });
-        gridContainer.addEventListener('touchmove', e => {
-            e.preventDefault();
-            const touch = e.touches[0];
-            const element = document.elementFromPoint(touch.clientX, touch.clientY);
-            handleSelectionMove(element);
-        }, { passive: false });
-        window.addEventListener('touchend', e => {
-            e.preventDefault();
-            handleSelectionEnd();
-        });
 
         function getCellsBetween(startRow, startCol, endRow, endCol) {
             const cells = [];
@@ -483,7 +474,8 @@
             return cells;
         }
 
-        const handleResetClick = () => {
+        const handleResetClick = (e) => {
+            e.preventDefault();
             if (resetButton.textContent === 'Jugar de Nuevo') {
                 leaderboardView.classList.add('hidden');
                 gameView.classList.remove('hidden');
@@ -495,12 +487,7 @@
             init();
         };
 
-        resetButton.addEventListener('click', handleResetClick);
-        // FIX: Changed to 'touchend' for better mobile reliability
-        resetButton.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            handleResetClick();
-        });
+        resetButton.addEventListener('pointerup', handleResetClick);
 
     </script>
 </body>
