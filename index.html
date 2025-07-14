@@ -471,27 +471,23 @@
             init();
         };
 
-        // --- Event Listeners ---
-        // FIX: Using 'click' for maximum button compatibility on all devices.
-        startGameButton.addEventListener('click', handleStartGame);
-        resetButton.addEventListener('click', handleResetClick);
-        
-        // Using pointer events for the grid is still best for the drag selection
-        gridContainer.addEventListener('pointerdown', handleSelectionStart);
-        gridContainer.addEventListener('pointermove', handleSelectionMove);
-        window.addEventListener('pointerup', handleSelectionEnd);
-
         // --- Autenticación y Arranque ---
         async function main() {
             try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                await signIn();
                 listenForLeaderboardChanges();
+                // FIX: Attach event listeners after everything is initialized
+                // Using 'click' for maximum button compatibility on all devices.
+                startGameButton.addEventListener('click', handleStartGame);
+                resetButton.addEventListener('click', handleResetClick);
+                
+                // Using pointer events for the grid is still best for the drag selection
+                gridContainer.addEventListener('pointerdown', handleSelectionStart);
+                gridContainer.addEventListener('pointermove', handleSelectionMove);
+                window.addEventListener('pointerup', handleSelectionEnd);
+
             } catch (error) {
-                console.error("Authentication failed:", error);
+                console.error("Initialization failed:", error);
             }
         }
         
