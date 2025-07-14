@@ -249,7 +249,8 @@
         }
 
         // --- Flujo del Juego ---
-        function handleStartGame() {
+        function handleStartGame(e) {
+            e.preventDefault();
             playerName = playerNameInput.value.trim();
             if (playerName) {
                 nameModal.style.display = 'none';
