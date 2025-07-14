@@ -266,7 +266,8 @@
         }
 
         startGameButton.addEventListener('click', handleStartGame);
-        startGameButton.addEventListener('touchstart', (e) => {
+        // FIX: Changed to 'touchend' for better mobile reliability
+        startGameButton.addEventListener('touchend', (e) => {
             e.preventDefault();
             handleStartGame();
         });
@@ -325,7 +326,8 @@
                 };
 
                 closeButton.addEventListener('click', closeModal);
-                closeButton.addEventListener('touchstart', (e) => {
+                // FIX: Changed to 'touchend' for better mobile reliability
+                closeButton.addEventListener('touchend', (e) => {
                     e.preventDefault();
                     closeModal();
                 });
@@ -481,7 +483,6 @@
             return cells;
         }
 
-        // FIX: Added touch event for the reset/play again button
         const handleResetClick = () => {
             if (resetButton.textContent === 'Jugar de Nuevo') {
                 leaderboardView.classList.add('hidden');
@@ -495,7 +496,8 @@
         };
 
         resetButton.addEventListener('click', handleResetClick);
-        resetButton.addEventListener('touchstart', (e) => {
+        // FIX: Changed to 'touchend' for better mobile reliability
+        resetButton.addEventListener('touchend', (e) => {
             e.preventDefault();
             handleResetClick();
         });
