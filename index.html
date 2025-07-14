@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sopa de Letras de Continuidad de Negocio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Kalam:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f5f3ff;
+        }
+        .title-font {
+            font-family: 'Kalam', cursive;
+        }
+        .word-search-grid {
+            display: grid;
+            grid-template-columns: repeat(15, minmax(0, 1fr));
+            gap: 4px;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none; /* Prevents scrolling while selecting on mobile */
+            max-width: 500px;
+            margin: auto;
+        }
+        .grid-cell {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1rem;
+            font-weight: 600;
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .grid-cell.selecting {
+            background-color: #a78bfa;
+            color: white;
+        }
+        .grid-cell.found {
+            background-color: #2dd4bf;
+            color: white;
+        }
+        .word-list-item.found {
+            text-decoration: line-through;
+            color: #9ca3af;
+            font-style: italic;
+        }
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            text-align: center;
+            max-width: 90%;
+            width: 400px;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <!-- Modal para pedir nombre de usuario -->
+    <div id="name-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold text-indigo-700 mb-4">¡Bienvenido!</h2>
+            <p class="text-gray-600 mb-4">Ingresa tu nombre para la tabla de clasificación.</p>
+            <input type="text" id="player-name-input" class="border-2 border-gray-300 p-2 rounded-md w-full mb-4" placeholder="Tu nombre...">
+            <button id="start-game-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg w-full">Comenzar a Jugar</button>
+        </div>
+    </div>
+
+    <div class="w-full max-w-5xl mx-auto bg-white p-6 md:p-8 rounded-2xl shadow-lg border border-gray-200 hidden" id="main-content">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-indigo-800 title-font">Sopa de Letras</h1>
+            <p id="subtitle" class="text-gray-600 mt-2">Encuentra las palabras ocultas basándote en las pistas.</p>
+            <div id="timer" class="text-3xl font-bold text-indigo-500 mt-4">00:00</div>
+        </div>
+
+        <div id="game-view">
+            <div class="w-full flex justify-center items-center mb-8">
+                <div id="word-search-container" class="word-search-grid"></div>
+            </div>
+            <div class="w-full lg:w-4/5 mx-auto">
+                <div class="bg-indigo-50 p-6 rounded-lg h-full">
+                    <h2 class="text-2xl font-bold text-indigo-700 mb-4 text-center">Pistas:</h2>
+                    <ul id="word-list" class="space-y-3 text-gray-700 text-base"></ul>
+                </div>
+            </div>
+        </div>
+        
+        <div id="leaderboard-view" class="hidden">
+            <div class="w-full md:w-3/4 lg:w-2/3 mx-auto">
+                <div class="bg-teal-50 p-6 rounded-lg h-full">
+                    <h2 class="text-2xl font-bold text-teal-800 mb-4 text-center">🏆 Tabla de Clasificación 🏆</h2>
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="border-b-2 border-teal-200">
+                                <th class="p-2">#</th>
+                                <th class="p-2">Nombre</th>
+                                <th class="p-2">Tiempo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-body">
+                            <!-- Filas de la tabla se generarán aquí -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-6">
+            <button id="reset-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                Reiniciar
+            </button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Configuración de Firebase ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const leaderboardCollection = collection(db, `artifacts/${appId}/public/data/leaderboard`);
+
+        // --- Autenticación ---
+        async function signIn() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Error signing in:", error);
+            }
+        }
+
+        // --- Elementos del DOM ---
+        const nameModal = document.getElementById('name-modal');
+        const playerNameInput = document.getElementById('player-name-input');
+        const startGameButton = document.getElementById('start-game-button');
+        const mainContent = document.getElementById('main-content');
+        const timerElement = document.getElementById('timer');
+        const subtitle = document.getElementById('subtitle');
+        const gridContainer = document.getElementById('word-search-container');
+        const wordListContainer = document.getElementById('word-list');
+        const resetButton = document.getElementById('reset-button');
+        const leaderboardBody = document.getElementById('leaderboard-body');
+        const gameView = document.getElementById('game-view');
+        const leaderboardView = document.getElementById('leaderboard-view');
+
+        // --- Variables del Juego ---
+        const wordsWithClues = [
+            { word: 'BRS', clue: '1. Soy el marco completo que engloba todas las estrategias y planes para que la organización entera, no solo la tecnología, pueda volver a la normalidad después de una crisis.' },
+            { word: 'RPO', clue: '2. Mido la cantidad máxima de datos que una empresa puede permitirse perder. Si mi valor es de 1 hora, significa que el último respaldo debe tener, como máximo, esa antigüedad.' },
+            { word: 'BIA', clue: '3. Soy el estudio que se realiza para entender qué partes de la organización son más críticas y cuáles serían las consecuencias si fallaran. Ayudo a establecer prioridades.' },
+            { word: 'FINANCIERO', clue: '4. Me refiero a las consecuencias monetarias directas de un incidente, como la pérdida de ingresos, la aplicación de multas o costos inesperados.' },
+            { word: 'REPUTACIONAL', clue: '5. Este tipo de daño no se mide en billetes, sino en la pérdida de confianza de los clientes y en la percepción negativa del público.' },
+            { word: 'TMIT', clue: '6. Represento el límite de tiempo absoluto que un servicio puede estar inactivo antes de que las consecuencias para el negocio se vuelvan inaceptables. Soy el verdadero punto de no retorno.' },
+            { word: 'CFS', clue: '7. Soy lo que el usuario utiliza directamente. Ejemplos de mí es la aplicación móvil del banco.' },
+            { word: 'RFS', clue: '8. Aunque el cliente no me ve, soy esencial para que el CFS funcione. Soy el "detrás de cámaras".' },
+            { word: 'TES', clue: '9. Soy la base sobre la que el CFS se construye. Incluyo elementos como la red, los servidores físicos o la electricidad del centro de datos. Sin mí, nada funciona.' },
+            { word: 'DRP', clue: '10. Soy tu guía de recuperación de servicios TIC, estableciendo el orden de ejecución.' },
+            { word: 'RTO', clue: '11. Soy la meta de tiempo establecida para restaurar un servicio después de una falla. Respondo a la pregunta: ¿En cuánto tiempo debemos tener esto funcionando de nuevo?' },
+            { word: 'LEGAL', clue: '12. Este tipo de impacto se produce cuando un incidente provoca que la empresa no cumpla con leyes, normativas o contratos, lo que puede acarrear sanciones.' }
+        ];
+        const wordsToFind = wordsWithClues.map(item => item.word);
+        const gridSize = 15;
+        const alphabet = 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ';
+        
+        let grid = [], isSelecting = false, selection = [], foundWords = [];
+        let playerName = '';
+        let timerInterval;
+        let startTime;
+        
+        // --- Lógica del Cronómetro ---
+        function startTimer() {
+            startTime = Date.now();
+            timerInterval = setInterval(() => {
+                const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+                const minutes = String(Math.floor(elapsedTime / 60)).padStart(2, '0');
+                const seconds = String(elapsedTime % 60).padStart(2, '0');
+                timerElement.textContent = `${minutes}:${seconds}`;
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+        }
+
+        // --- Lógica de la Tabla de Clasificación ---
+        function listenForLeaderboardChanges() {
+            const q = query(leaderboardCollection, orderBy("timeInSeconds"));
+            onSnapshot(q, (snapshot) => {
+                leaderboardBody.innerHTML = '';
+                let rank = 1;
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const minutes = String(Math.floor(data.timeInSeconds / 60)).padStart(2, '0');
+                    const seconds = String(data.timeInSeconds % 60).padStart(2, '0');
+                    const row = document.createElement('tr');
+                    const rankContent = rank <= 3 ? `🏆 ${rank}` : rank;
+                    row.innerHTML = `
+                        <td class="p-2 font-bold">${rankContent}</td>
+                        <td class="p-2">${data.name}</td>
+                        <td class="p-2">${minutes}:${seconds}</td>
+                    `;
+                    leaderboardBody.appendChild(row);
+                    rank++;
+                });
+            });
+        }
+
+        async function submitScore() {
+            const finalTime = Math.floor((Date.now() - startTime) / 1000);
+            try {
+                await addDoc(leaderboardCollection, {
+                    name: playerName,
+                    timeInSeconds: finalTime,
+                    createdAt: serverTimestamp()
+                });
+            } catch (e) {
+                console.error("Error adding document: ", e);
+            }
+        }
+
+        // --- Flujo del Juego ---
+        function handleStartGame(e) {
+            e.preventDefault();
+            playerName = playerNameInput.value.trim();
+            if (playerName) {
+                nameModal.style.display = 'none';
+                mainContent.classList.remove('hidden');
+                init();
+            } else {
+                const alertModal = document.createElement('div');
+                alertModal.className = 'modal-backdrop';
+                alertModal.innerHTML = `
+                    <div class="modal-content">
+                        <p class="text-lg text-gray-700">Por favor, ingresa un nombre.</p>
+                        <button id="close-alert-button" class="mt-4 bg-indigo-500 text-white font-bold py-2 px-4 rounded">Entendido</button>
+                    </div>
+                `;
+                document.body.appendChild(alertModal);
+                document.getElementById('close-alert-button').addEventListener('click', () => {
+                   alertModal.remove();
+                });
+            }
+        }
+        
+        function checkSelection() {
+            let selectedString = selection.map(cell => cell.textContent).join('');
+            let reversedString = selectedString.split('').reverse().join('');
+            const foundWord = wordsToFind.find(word => (word === selectedString || word === reversedString) && !foundWords.includes(word));
+            
+            if (foundWord) {
+                foundWords.push(foundWord);
+                selection.forEach(cell => {
+                    cell.classList.add('found');
+                });
+                document.getElementById(`word-${foundWord}`).classList.add('found');
+            }
+            
+            if (foundWords.length === wordsToFind.length) {
+                stopTimer();
+                submitScore();
+                
+                const finalTime = timerElement.textContent;
+                const modal = document.createElement('div');
+                modal.id = 'congrats-modal';
+                modal.className = 'modal-backdrop';
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <h3 class="text-2xl font-bold text-indigo-600 mb-4">¡Felicidades!</h3>
+                        <p class="text-lg text-gray-700">Has encontrado todas las palabras en un tiempo de <strong>${finalTime}</strong>.</p>
+                        <p class="text-gray-600 mt-2">Tu puntuación ha sido registrada.</p>
+                        <button id="close-congrats-button" class="mt-4 bg-indigo-500 text-white py-2 px-4 rounded">Ver Clasificación</button>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+
+                const closeButton = document.getElementById('close-congrats-button');
+                const closeModal = () => {
+                    const modalToRemove = document.getElementById('congrats-modal');
+                    if (modalToRemove) {
+                        modalToRemove.remove();
+                    }
+                    gameView.classList.add('hidden');
+                    timerElement.classList.add('hidden');
+                    subtitle.classList.add('hidden');
+                    leaderboardView.classList.remove('hidden');
+                    resetButton.textContent = 'Jugar de Nuevo';
+                };
+                closeButton.addEventListener('click', closeModal);
+            }
+        }
+        
+        function init() {
+            gridContainer.innerHTML = '';
+            wordListContainer.innerHTML = '';
+            foundWords = [];
+            
+            wordsWithClues.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = item.clue;
+                li.id = `word-${item.word}`;
+                li.className = 'word-list-item';
+                wordListContainer.appendChild(li);
+            });
+
+            grid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
+            placeWords();
+            fillEmptySpaces();
+            renderGrid();
+            startTimer();
+        }
+
+        function placeWords() {
+            const directions = [
+                { x: 1, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }, { x: 1, y: -1 },
+                { x: -1, y: 0 }, { x: 0, y: -1 }, { x: -1, y: -1}, { x: -1, y: 1 }
+            ];
+
+            wordsToFind.forEach(word => {
+                let placed = false;
+                let attempts = 0;
+                while (!placed && attempts < 100) {
+                    const dir = directions[Math.floor(Math.random() * directions.length)];
+                    const startRow = Math.floor(Math.random() * gridSize);
+                    const startCol = Math.floor(Math.random() * gridSize);
+
+                    if (canPlaceWord(word, startRow, startCol, dir)) {
+                        for (let i = 0; i < word.length; i++) {
+                            grid[startRow + i * dir.y][startCol + i * dir.x] = word[i];
+                        }
+                        placed = true;
+                    }
+                    attempts++;
+                }
+            });
+        }
+
+        function canPlaceWord(word, row, col, dir) {
+            for (let i = 0; i < word.length; i++) {
+                const newRow = row + i * dir.y;
+                const newCol = col + i * dir.x;
+                if (newRow < 0 || newRow >= gridSize || newCol < 0 || newCol >= gridSize) return false;
+                const existingChar = grid[newRow][newCol];
+                if (existingChar !== null && existingChar !== word[i]) return false;
+            }
+            return true;
+        }
+
+        function fillEmptySpaces() {
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    if (grid[r][c] === null) {
+                        grid[r][c] = alphabet[Math.floor(Math.random() * alphabet.length)];
+                    }
+                }
+            }
+        }
+
+        function renderGrid() {
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell';
+                    cell.textContent = grid[r][c];
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    gridContainer.appendChild(cell);
+                }
+            }
+        }
+        
+        function handleSelectionStart(e) {
+            e.preventDefault();
+            const target = e.target.closest('.grid-cell');
+            if (target) {
+                isSelecting = true;
+                selection = [target];
+                target.classList.add('selecting');
+            }
+        }
+
+        function handleSelectionMove(e) {
+            e.preventDefault();
+            if (!isSelecting) return;
+            
+            const clientX = e.pointerType === 'touch' ? e.touches[0].clientX : e.clientX;
+            const clientY = e.pointerType === 'touch' ? e.touches[0].clientY : e.clientY;
+            const target = document.elementFromPoint(clientX, clientY);
+
+            if (target && target.classList.contains('grid-cell')) {
+                document.querySelectorAll('.selecting').forEach(el => el.classList.remove('selecting'));
+                const startCell = selection[0];
+                const endCell = target;
+                
+                const startRow = parseInt(startCell.dataset.row);
+                const startCol = parseInt(startCell.dataset.col);
+                const endRow = parseInt(endCell.dataset.row);
+                const endCol = parseInt(endCell.dataset.col);
+
+                selection = getCellsBetween(startRow, startCol, endRow, endCol);
+                selection.forEach(cell => cell.classList.add('selecting'));
+            }
+        }
+
+        function handleSelectionEnd(e) {
+            e.preventDefault();
+            if (isSelecting) {
+                isSelecting = false;
+                checkSelection();
+                document.querySelectorAll('.selecting').forEach(el => el.classList.remove('selecting'));
+            }
+        }
+
+        function getCellsBetween(startRow, startCol, endRow, endCol) {
+            const cells = [];
+            const dx = Math.sign(endCol - startCol);
+            const dy = Math.sign(endRow - startRow);
+            if (startRow !== endRow && startCol !== endCol && Math.abs(endRow - startRow) !== Math.abs(endCol - startCol)) {
+                return [selection[0]];
+            }
+            let r = startRow;
+            let c = startCol;
+            while (true) {
+                const cell = document.querySelector(`[data-row='${r}'][data-col='${c}']`);
+                if(cell) cells.push(cell);
+                if (r === endRow && c === endCol) break;
+                r += dy;
+                c += dx;
+            }
+            return cells;
+        }
+
+        const handleResetClick = () => {
+            if (resetButton.textContent === 'Jugar de Nuevo') {
+                leaderboardView.classList.add('hidden');
+                gameView.classList.remove('hidden');
+                timerElement.classList.remove('hidden');
+                subtitle.classList.remove('hidden');
+                resetButton.textContent = 'Reiniciar';
+            }
+            stopTimer();
+            init();
+        };
+
+        // --- Autenticación y Arranque ---
+        async function main() {
+            try {
+                await signIn();
+                listenForLeaderboardChanges();
+                // FIX: Attach event listeners after everything is initialized
+                // Using 'click' for maximum button compatibility on all devices.
+                startGameButton.addEventListener('click', handleStartGame);
+                resetButton.addEventListener('click', handleResetClick);
+                
+                // Using pointer events for the grid is still best for the drag selection
+                gridContainer.addEventListener('pointerdown', handleSelectionStart);
+                gridContainer.addEventListener('pointermove', handleSelectionMove);
+                window.addEventListener('pointerup', handleSelectionEnd);
+
+            } catch (error) {
+                console.error("Initialization failed:", error);
+            }
+        }
+        
+        main();
+
+    </script>
+</body>
+</html>
