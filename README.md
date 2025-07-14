@@ -1,4 +1,4 @@
-#  sopa-de-letras-institucional
+#  sopa-de-letras
 
 ¡Bienvenido/a a la Sopa de Letras! Este es un pequeño juego interactivo creado para poner a prueba nuestro conocimiento.
 
