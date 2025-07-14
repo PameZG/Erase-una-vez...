@@ -79,7 +79,6 @@
     <!-- Modal para pedir nombre de usuario -->
     <div id="name-modal" class="modal-backdrop">
         <div class="modal-content">
-            <!-- FIX: Re-added name input field -->
             <h2 class="text-2xl font-bold text-indigo-700 mb-4">¡Bienvenido!</h2>
             <p class="text-gray-600 mb-4">Ingresa tu nombre para la tabla de clasificación.</p>
             <input type="text" id="player-name-input" class="border-2 border-gray-300 p-2 rounded-md w-full mb-4" placeholder="Tu nombre...">
@@ -250,9 +249,7 @@
         }
 
         // --- Flujo del Juego ---
-        function handleStartGame(e) {
-            e.preventDefault();
-            // FIX: Read player name from input field
+        function handleStartGame() {
             playerName = playerNameInput.value.trim();
             if (playerName) {
                 nameModal.style.display = 'none';
@@ -268,8 +265,7 @@
                     </div>
                 `;
                 document.body.appendChild(alertModal);
-                document.getElementById('close-alert-button').addEventListener('pointerup', (evt) => {
-                   evt.preventDefault();
+                document.getElementById('close-alert-button').addEventListener('click', () => {
                    alertModal.remove();
                 });
             }
@@ -307,8 +303,7 @@
                 document.body.appendChild(modal);
 
                 const closeButton = document.getElementById('close-congrats-button');
-                const closeModal = (e) => {
-                    e.preventDefault();
+                const closeModal = () => {
                     const modalToRemove = document.getElementById('congrats-modal');
                     if (modalToRemove) {
                         modalToRemove.remove();
@@ -319,7 +314,7 @@
                     leaderboardView.classList.remove('hidden');
                     resetButton.textContent = 'Jugar de Nuevo';
                 };
-                closeButton.addEventListener('pointerup', closeModal);
+                closeButton.addEventListener('click', closeModal);
             }
         }
         
@@ -463,8 +458,7 @@
             return cells;
         }
 
-        const handleResetClick = (e) => {
-            e.preventDefault();
+        const handleResetClick = () => {
             if (resetButton.textContent === 'Jugar de Nuevo') {
                 leaderboardView.classList.add('hidden');
                 gameView.classList.remove('hidden');
@@ -477,9 +471,11 @@
         };
 
         // --- Event Listeners ---
-        startGameButton.addEventListener('pointerup', handleStartGame);
-        resetButton.addEventListener('pointerup', handleResetClick);
+        // FIX: Using 'click' for maximum button compatibility on all devices.
+        startGameButton.addEventListener('click', handleStartGame);
+        resetButton.addEventListener('click', handleResetClick);
         
+        // Using pointer events for the grid is still best for the drag selection
         gridContainer.addEventListener('pointerdown', handleSelectionStart);
         gridContainer.addEventListener('pointermove', handleSelectionMove);
         window.addEventListener('pointerup', handleSelectionEnd);
