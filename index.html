@@ -79,6 +79,7 @@
     <!-- Modal para pedir nombre de usuario -->
     <div id="name-modal" class="modal-backdrop">
         <div class="modal-content">
+            <!-- FIX: Re-added name input field -->
             <h2 class="text-2xl font-bold text-indigo-700 mb-4">¡Bienvenido!</h2>
             <p class="text-gray-600 mb-4">Ingresa tu nombre para la tabla de clasificación.</p>
             <input type="text" id="player-name-input" class="border-2 border-gray-300 p-2 rounded-md w-full mb-4" placeholder="Tu nombre...">
@@ -86,7 +87,7 @@
         </div>
     </div>
 
-    <div class="w-full max-w-5xl mx-auto bg-white p-6 md:p-8 rounded-2xl shadow-lg border border-gray-200">
+    <div class="w-full max-w-5xl mx-auto bg-white p-6 md:p-8 rounded-2xl shadow-lg border border-gray-200 hidden" id="main-content">
         <div class="text-center mb-8">
             <h1 class="text-4xl md:text-5xl font-bold text-indigo-800 title-font">Sopa de Letras</h1>
             <p id="subtitle" class="text-gray-600 mt-2">Encuentra las palabras ocultas basándote en las pistas.</p>
@@ -134,7 +135,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Configuración de Firebase ---
@@ -163,6 +164,7 @@
         const nameModal = document.getElementById('name-modal');
         const playerNameInput = document.getElementById('player-name-input');
         const startGameButton = document.getElementById('start-game-button');
+        const mainContent = document.getElementById('main-content');
         const timerElement = document.getElementById('timer');
         const subtitle = document.getElementById('subtitle');
         const gridContainer = document.getElementById('word-search-container');
@@ -250,9 +252,11 @@
         // --- Flujo del Juego ---
         function handleStartGame(e) {
             e.preventDefault();
+            // FIX: Read player name from input field
             playerName = playerNameInput.value.trim();
             if (playerName) {
                 nameModal.style.display = 'none';
+                mainContent.classList.remove('hidden');
                 init();
             } else {
                 const alertModal = document.createElement('div');
@@ -264,19 +268,12 @@
                     </div>
                 `;
                 document.body.appendChild(alertModal);
-                document.getElementById('close-alert-button').addEventListener('pointerup', () => {
+                document.getElementById('close-alert-button').addEventListener('pointerup', (evt) => {
+                   evt.preventDefault();
                    alertModal.remove();
                 });
             }
         }
-
-        // --- Inicialización ---
-        async function main() {
-            await signIn();
-            listenForLeaderboardChanges();
-        }
-        
-        main();
         
         function checkSelection() {
             let selectedString = selection.map(cell => cell.textContent).join('');
@@ -419,8 +416,8 @@
             e.preventDefault();
             if (!isSelecting) return;
             
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const clientX = e.pointerType === 'touch' ? e.touches[0].clientX : e.clientX;
+            const clientY = e.pointerType === 'touch' ? e.touches[0].clientY : e.clientY;
             const target = document.elementFromPoint(clientX, clientY);
 
             if (target && target.classList.contains('grid-cell')) {
@@ -446,14 +443,6 @@
                 document.querySelectorAll('.selecting').forEach(el => el.classList.remove('selecting'));
             }
         }
-
-        // FIX: Replaced all input events with Pointer Events for universal compatibility
-        startGameButton.addEventListener('pointerup', handleStartGame);
-        
-        gridContainer.addEventListener('pointerdown', handleSelectionStart);
-        gridContainer.addEventListener('pointermove', handleSelectionMove);
-        window.addEventListener('pointerup', handleSelectionEnd);
-
 
         function getCellsBetween(startRow, startCol, endRow, endCol) {
             const cells = [];
@@ -487,7 +476,29 @@
             init();
         };
 
+        // --- Event Listeners ---
+        startGameButton.addEventListener('pointerup', handleStartGame);
         resetButton.addEventListener('pointerup', handleResetClick);
+        
+        gridContainer.addEventListener('pointerdown', handleSelectionStart);
+        gridContainer.addEventListener('pointermove', handleSelectionMove);
+        window.addEventListener('pointerup', handleSelectionEnd);
+
+        // --- Autenticación y Arranque ---
+        async function main() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                listenForLeaderboardChanges();
+            } catch (error) {
+                console.error("Authentication failed:", error);
+            }
+        }
+        
+        main();
 
     </script>
 </body>
