@@ -92,7 +92,6 @@
             <div id="timer" class="text-3xl font-bold text-indigo-500 mt-4">00:00</div>
         </div>
 
-        <!-- FIX: Added separate containers for game and leaderboard views -->
         <div id="game-view">
             <div class="w-full flex justify-center items-center mb-8">
                 <div id="word-search-container" class="word-search-grid"></div>
@@ -181,7 +180,7 @@
             { word: 'REPUTACIONAL', clue: '5. Este tipo de daño no se mide en billetes, sino en la pérdida de confianza de los clientes y en la percepción negativa del público.' },
             { word: 'TMIT', clue: '6. Represento el límite de tiempo absoluto que un servicio puede estar inactivo antes de que las consecuencias para el negocio se vuelvan inaceptables. Soy el verdadero punto de no retorno.' },
             { word: 'CFS', clue: '7. Soy lo que el usuario utiliza directamente. Ejemplos de mí es la aplicación móvil del banco.' },
-            { word: 'RFS', clue: '8. Aunque el cliente no me ve, soy esencial para que el CFS funciones. Soy el "detrás de cámaras".' },
+            { word: 'RFS', clue: '8. Aunque el cliente no me ve, soy esencial para que el CFS funcione. Soy el "detrás de cámaras".' },
             { word: 'TES', clue: '9. Soy la base sobre la que el CFS se construye. Incluyo elementos como la red, los servidores físicos o la electricidad del centro de datos. Sin mí, nada funciona.' },
             { word: 'DRP', clue: '10. Soy tu guía de recuperación de servicios TIC, estableciendo el orden de ejecución.' },
             { word: 'RTO', clue: '11. Soy la meta de tiempo establecida para restaurar un servicio después de una falla. Respondo a la pregunta: ¿En cuánto tiempo debemos tener esto funcionando de nuevo?' },
@@ -318,7 +317,6 @@
                     if (modalToRemove) {
                         modalToRemove.remove();
                     }
-                    // FIX: Switch to leaderboard view
                     gameView.classList.add('hidden');
                     timerElement.classList.add('hidden');
                     subtitle.classList.add('hidden');
@@ -483,7 +481,8 @@
             return cells;
         }
 
-        resetButton.addEventListener('click', () => {
+        // FIX: Added touch event for the reset/play again button
+        const handleResetClick = () => {
             if (resetButton.textContent === 'Jugar de Nuevo') {
                 leaderboardView.classList.add('hidden');
                 gameView.classList.remove('hidden');
@@ -493,6 +492,12 @@
             }
             stopTimer();
             init();
+        };
+
+        resetButton.addEventListener('click', handleResetClick);
+        resetButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleResetClick();
         });
 
     </script>
