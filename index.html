@@ -71,6 +71,9 @@
             text-align: center;
             max-width: 90%;
             width: 400px;
+            /* FIX: Ensure the modal content is rendered above the backdrop overlay */
+            position: relative;
+            z-index: 1001;
         }
     </style>
 </head>
@@ -474,8 +477,9 @@
         // --- Autenticación y Arranque ---
         async function main() {
             try {
-                // FIX: Attach listeners first, then perform async operations.
-                // This ensures the UI is responsive immediately.
+                // FIX: Attach listeners inside main function but after the DOM is loaded
+                // to ensure elements exist. This script runs at the end of the body,
+                // so elements are guaranteed to be available.
                 startGameButton.addEventListener('click', handleStartGame);
                 resetButton.addEventListener('click', handleResetClick);
                 
@@ -491,6 +495,7 @@
             }
         }
         
+        // The script is at the end of the body, so the DOM is ready. Call main directly.
         main();
 
     </script>
