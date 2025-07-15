@@ -76,5 +76,199 @@
 
         // --- Variables del Juego ---
         const wordsWithClues = [
-            { word: '](#)
-
+            { word: 'BRS', clue: '1. Soy el marco completo que engloba todas las estrategias y planes para que la organización entera, no solo la tecnología, pueda volver a la normalidad después de un incidente.' },
+            { word: 'RPO', clue: '2. Mido la cantidad máxima de datos que una empresa puede permitirse perder. Si mi valor es de 1 hora, significa que el último respaldo debe tener, como máximo, esa antigüedad.' },
+            { word: 'BIA', clue: '3. Soy el estudio que se realiza para entender qué partes de la organización son más críticas y cuáles serían las consecuencias si fallaran. Ayudo a establecer prioridades.' },
+            { word: 'FINANCIERO', clue: '4. Me refiero a las consecuencias monetarias directas de un incidente, como la pérdida de ingresos, la aplicación de multas o costos inesperados.' },
+            { word: 'REPUTACIONAL', clue: '5. Este tipo de daño no se mide en billetes, sino en la pérdida de confianza de los clientes y en la percepción negativa del público.' },
+            { word: 'TMIT', clue: '6. Represento el límite de tiempo absoluto que un servicio puede estar inactivo antes de que las consecuencias para el negocio se vuelvan inaceptables. Soy el verdadero deadline.' },
+            { word: 'CFS', clue: '7. Soy lo que el usuario utiliza directamente. Ejemplos de mí es la aplicación móvil del banco.' },
+            { word: 'RFS', clue: '8. Aunque el cliente no me ve, soy esencial para que el CFS funcione. Soy el "detrás de cámaras".' },
+            { word: 'TES', clue: '9. Soy la base sobre la que el CFS se construye. Incluyo elementos como la red, los servidores físicos o la electricidad del centro de datos. Sin mí, nada funciona.' },
+            { word: 'DRP', clue: '10. Soy tu guía de recuperación de servicios TIC, estableciendo el orden de ejecución.' },
+            { word: 'RTO', clue: '11. Soy la meta de tiempo establecida para restaurar un servicio después de una falla. Respondo a la pregunta: ¿En cuánto tiempo debemos tener esto funcionando de nuevo?' },
+            { word: 'LEGAL', clue: '12. Este tipo de impacto se produce cuando un incidente provoca que la empresa no cumpla con leyes, normativas o contratos, lo que puede acarrear sanciones.' }
+        ];
+        const wordsToFind = wordsWithClues.map(item => item.word);
+        const gridSize = 15;
+        const alphabet = 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ';
+
+        let grid = [], isSelecting = false, selection = [], foundWords = [];
+        let timerInterval;
+        let startTime;
+
+        // --- Lógica del Cronómetro ---
+        function startTimer() {
+            startTime = Date.now();
+            timerInterval = setInterval(() => {
+                const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+                const minutes = String(Math.floor(elapsedTime / 60)).padStart(2, '0');
+                const seconds = String(elapsedTime % 60).padStart(2, '0');
+                timerElement.textContent = `${minutes}:${seconds}`;
+            }, 1000);
+        }
+        function stopTimer() {
+            clearInterval(timerInterval);
+        }
+
+        // --- Flujo del Juego ---
+        function checkSelection() {
+            if (selection.length <= 1) {
+                document.querySelectorAll('.selecting').forEach(el => el.classList.remove('selecting'));
+                selection = [];
+                return;
+            }
+            let selectedString = selection.map(cell => cell.textContent).join('');
+            let reversedString = selectedString.split('').reverse().join('');
+            const foundWord = wordsToFind.find(word => (word === selectedString || word === reversedString) && !foundWords.includes(word));
+            if (foundWord) {
+                foundWords.push(foundWord);
+                selection.forEach(cell => {
+                    cell.classList.add('found');
+                });
+                document.getElementById(`word-${foundWord}`).classList.add('found');
+            }
+            document.querySelectorAll('.selecting').forEach(el => el.classList.remove('selecting'));
+            selection = [];
+            if (foundWords.length === wordsToFind.length) {
+                stopTimer();
+                alert("¡Juego terminado! Has encontrado todas las palabras.");
+            }
+        }
+
+        function init() {
+            gridContainer.innerHTML = '';
+            wordListContainer.innerHTML = '';
+            foundWords = [];
+            wordsWithClues.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = item.clue;
+                li.id = `word-${item.word}`;
+                li.className = 'word-list-item';
+                wordListContainer.appendChild(li);
+            });
+            grid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
+            placeWords();
+            fillEmptySpaces();
+            renderGrid();
+            startTimer();
+        }
+
+        function placeWords() {
+            const directions = [
+                { x: 1, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }, { x: 1, y: -1 },
+                { x: -1, y: 0 }, { x: 0, y: -1 }, { x: -1, y: -1}, { x: -1, y: 1 }
+            ];
+            wordsToFind.forEach(word => {
+                let placed = false;
+                let attempts = 0;
+                while (!placed && attempts < 100) {
+                    const dir = directions[Math.floor(Math.random() * directions.length)];
+                    const startRow = Math.floor(Math.random() * gridSize);
+                    const startCol = Math.floor(Math.random() * gridSize);
+                    if (canPlaceWord(word, startRow, startCol, dir)) {
+                        for (let i = 0; i < word.length; i++) {
+                            grid[startRow + i * dir.y][startCol + i * dir.x] = word[i];
+                        }
+                        placed = true;
+                    }
+                    attempts++;
+                }
+            });
+        }
+        function canPlaceWord(word, row, col, dir) {
+            for (let i = 0; i < word.length; i++) {
+                const newRow = row + i * dir.y;
+                const newCol = col + i * dir.x;
+                if (newRow < 0 || newRow >= gridSize || newCol < 0 || newCol >= gridSize) return false;
+                const existingChar = grid[newRow][newCol];
+                if (existingChar !== null && existingChar !== word[i]) return false;
+            }
+            return true;
+        }
+        function fillEmptySpaces() {
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    if (grid[r][c] === null) {
+                        grid[r][c] = alphabet[Math.floor(Math.random() * alphabet.length)];
+                    }
+                }
+            }
+        }
+        function renderGrid() {
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell';
+                    cell.textContent = grid[r][c];
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    gridContainer.appendChild(cell);
+                }
+            }
+        }
+        function handleSelectionStart(e) {
+            e.preventDefault();
+            const target = e.target.closest('.grid-cell');
+            if (target) {
+                isSelecting = true;
+                selection = [target];
+                target.classList.add('selecting');
+            }
+        }
+        function handleSelectionMove(e) {
+            e.preventDefault();
+            if (!isSelecting) return;
+            const clientX = e.pointerType === 'touch' ? e.touches[0].clientX : e.clientX;
+            const clientY = e.pointerType === 'touch' ? e.touches[0].clientY : e.clientY;
+            const target = document.elementFromPoint(clientX, clientY);
+            if (target && target.classList.contains('grid-cell')) {
+                document.querySelectorAll('.selecting').forEach(el => el.classList.remove('selecting'));
+                const startCell = selection[0];
+                const endCell = target;
+                const startRow = parseInt(startCell.dataset.row);
+                const startCol = parseInt(startCell.dataset.col);
+                const endRow = parseInt(endCell.dataset.row);
+                const endCol = parseInt(endCell.dataset.col);
+                selection = getCellsBetween(startRow, startCol, endRow, endCol);
+                selection.forEach(cell => cell.classList.add('selecting'));
+            }
+        }
+        function handleSelectionEnd(e) {
+            e.preventDefault();
+            if (isSelecting) {
+                isSelecting = false;
+                checkSelection();
+            }
+        }
+        function getCellsBetween(startRow, startCol, endRow, endCol) {
+            const cells = [];
+            const dx = Math.sign(endCol - startCol);
+            const dy = Math.sign(endRow - startRow);
+            if (startRow !== endRow && startCol !== endCol && Math.abs(endRow - startRow) !== Math.abs(endCol - startCol)) {
+                return [selection[0]];
+            }
+            let r = startRow;
+            let c = startCol;
+            while (true) {
+                const cell = document.querySelector(`[data-row='${r}'][data-col='${c}']`);
+                if(cell) cells.push(cell);
+                if (r === endRow && c === endCol) break;
+                r += dy;
+                c += dx;
+            }
+            return cells;
+        }
+        const handleResetClick = () => {
+            stopTimer();
+            init();
+        };
+        // --- Arranque ---
+        gridContainer.addEventListener('pointerdown', handleSelectionStart);
+        gridContainer.addEventListener('pointermove', handleSelectionMove);
+        window.addEventListener('pointerup', handleSelectionEnd);
+        resetButton.addEventListener('click', handleResetClick);
+        init();
+    </script>
+</body>
+</html>
