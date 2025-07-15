@@ -71,7 +71,6 @@
             text-align: center;
             max-width: 90%;
             width: 400px;
-            /* FIX: Ensure the modal content is rendered above the backdrop overlay */
             position: relative;
             z-index: 1001;
         }
@@ -85,7 +84,8 @@
             <h2 class="text-2xl font-bold text-indigo-700 mb-4">¡Bienvenido!</h2>
             <p class="text-gray-600 mb-4">Ingresa tu nombre para la tabla de clasificación.</p>
             <input type="text" id="player-name-input" class="border-2 border-gray-300 p-2 rounded-md w-full mb-4" placeholder="Tu nombre...">
-            <button id="start-game-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg w-full">Comenzar a Jugar</button>
+            <!-- FIX: Using onclick attribute for maximum compatibility -->
+            <button id="start-game-button" onclick="handleStartGame(event)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg w-full">Comenzar a Jugar</button>
         </div>
     </div>
 
@@ -129,7 +129,7 @@
         </div>
 
         <div class="text-center mt-6">
-            <button id="reset-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">
+            <button id="reset-button" onclick="handleResetClick(event)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">
                 Reiniciar
             </button>
         </div>
@@ -165,7 +165,6 @@
         // --- Elementos del DOM ---
         const nameModal = document.getElementById('name-modal');
         const playerNameInput = document.getElementById('player-name-input');
-        const startGameButton = document.getElementById('start-game-button');
         const mainContent = document.getElementById('main-content');
         const timerElement = document.getElementById('timer');
         const subtitle = document.getElementById('subtitle');
@@ -252,7 +251,8 @@
         }
 
         // --- Flujo del Juego ---
-        function handleStartGame(e) {
+        // FIX: Made function globally available for onclick attribute
+        window.handleStartGame = function(e) {
             e.preventDefault();
             playerName = playerNameInput.value.trim();
             if (playerName) {
@@ -265,13 +265,10 @@
                 alertModal.innerHTML = `
                     <div class="modal-content">
                         <p class="text-lg text-gray-700">Por favor, ingresa un nombre.</p>
-                        <button id="close-alert-button" class="mt-4 bg-indigo-500 text-white font-bold py-2 px-4 rounded">Entendido</button>
+                        <button onclick="this.parentElement.parentElement.remove()" class="mt-4 bg-indigo-500 text-white font-bold py-2 px-4 rounded">Entendido</button>
                     </div>
                 `;
                 document.body.appendChild(alertModal);
-                document.getElementById('close-alert-button').addEventListener('click', () => {
-                   alertModal.remove();
-                });
             }
         }
         
@@ -462,7 +459,8 @@
             return cells;
         }
 
-        const handleResetClick = () => {
+        window.handleResetClick = function(e) {
+            e.preventDefault();
             if (resetButton.textContent === 'Jugar de Nuevo') {
                 leaderboardView.classList.add('hidden');
                 gameView.classList.remove('hidden');
@@ -477,12 +475,6 @@
         // --- Autenticación y Arranque ---
         async function main() {
             try {
-                // FIX: Attach listeners inside main function but after the DOM is loaded
-                // to ensure elements exist. This script runs at the end of the body,
-                // so elements are guaranteed to be available.
-                startGameButton.addEventListener('click', handleStartGame);
-                resetButton.addEventListener('click', handleResetClick);
-                
                 gridContainer.addEventListener('pointerdown', handleSelectionStart);
                 gridContainer.addEventListener('pointermove', handleSelectionMove);
                 window.addEventListener('pointerup', handleSelectionEnd);
@@ -495,7 +487,6 @@
             }
         }
         
-        // The script is at the end of the body, so the DOM is ready. Call main directly.
         main();
 
     </script>
