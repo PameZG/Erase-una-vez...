@@ -36,9 +36,28 @@
         .grid-cell.selecting { background-color: #a78bfa; color: white; }
         .grid-cell.found { background-color: #2dd4bf; color: white; }
         .word-list-item.found { text-decoration: line-through; color: #9ca3af; font-style: italic; }
+        .modal-backdrop {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-content {
+            background-color: white; padding: 2rem; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            text-align: center; max-width: 90%; width: 400px; position: relative; z-index: 1001;
+        }
+        .ranking-trophy { font-size: 1.5em; vertical-align: middle; color: #FFD700; }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4">
+
+    <!-- Modal para pedir nombre -->
+    <div id="end-game-modal" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold text-indigo-700 mb-4">¡Juego Terminado!</h2>
+            <p class="text-gray-600 mb-4">Ingresa tu nombre para guardar tu tiempo en la tabla de clasificación.</p>
+            <input type="text" id="player-name-input" class="border-2 border-gray-300 p-2 rounded-md w-full mb-4" placeholder="Tu nombre..." maxlength="25">
+            <button id="submit-score-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg w-full">Guardar Puntuación</button>
+        </div>
+    </div>
 
     <div class="w-full max-w-5xl mx-auto bg-white p-6 md:p-8 rounded-2xl shadow-lg border border-gray-200" id="main-content">
         <div class="text-center mb-8">
@@ -46,7 +65,6 @@
             <p id="subtitle" class="text-gray-600 mt-2">Encuentra las palabras ocultas basándote en las pistas.</p>
             <div id="timer" class="text-3xl font-bold text-indigo-500 mt-4">00:00</div>
         </div>
-
         <div id="game-view">
             <div class="w-full flex justify-center items-center mb-8">
                 <div id="word-search-container" class="word-search-grid"></div>
@@ -58,7 +76,23 @@
                 </div>
             </div>
         </div>
-
+        <div id="leaderboard-view" class="hidden">
+            <div class="w-full md:w-3/4 lg:w-2/3 mx-auto">
+                <div class="bg-teal-50 p-6 rounded-lg h-full">
+                    <h2 class="text-2xl font-bold text-teal-800 mb-4 text-center">🏆 Tabla de Clasificación 🏆</h2>
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="border-b-2 border-teal-200">
+                                <th class="p-2">#</th>
+                                <th class="p-2">Nombre</th>
+                                <th class="p-2">Tiempo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
         <div class="text-center mt-6">
             <button id="reset-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">
                 Reiniciar
@@ -68,11 +102,17 @@
 
     <script>
         // --- Elementos del DOM ---
+        const endGameModal = document.getElementById('end-game-modal');
+        const playerNameInput = document.getElementById('player-name-input');
+        const submitScoreButton = document.getElementById('submit-score-button');
         const timerElement = document.getElementById('timer');
         const subtitle = document.getElementById('subtitle');
         const gridContainer = document.getElementById('word-search-container');
         const wordListContainer = document.getElementById('word-list');
         const resetButton = document.getElementById('reset-button');
+        const leaderboardBody = document.getElementById('leaderboard-body');
+        const gameView = document.getElementById('game-view');
+        const leaderboardView = document.getElementById('leaderboard-view');
 
         // --- Variables del Juego ---
         const wordsWithClues = [
@@ -96,8 +136,9 @@
         let grid = [], isSelecting = false, selection = [], foundWords = [];
         let timerInterval;
         let startTime;
+        let finalTimeInSeconds = 0;
 
-        // --- Lógica del Cronómetro ---
+        // --- Cronómetro ---
         function startTimer() {
             startTime = Date.now();
             timerInterval = setInterval(() => {
@@ -111,7 +152,60 @@
             clearInterval(timerInterval);
         }
 
+        // --- Ranking usando localStorage ---
+        function getLeaderboard() {
+            let data = [];
+            try {
+                data = JSON.parse(localStorage.getItem('wordsearch-leaderboard')) || [];
+            } catch (e) { data = []; }
+            return data;
+        }
+        function saveLeaderboard(data) {
+            localStorage.setItem('wordsearch-leaderboard', JSON.stringify(data));
+        }
+        function addScoreToLeaderboard(name, timeInSeconds) {
+            const leaderboard = getLeaderboard();
+            leaderboard.push({ name, timeInSeconds });
+            saveLeaderboard(leaderboard);
+        }
+        function showLeaderboard() {
+            leaderboardBody.innerHTML = '';
+            let leaderboard = getLeaderboard();
+            leaderboard.sort((a, b) => a.timeInSeconds - b.timeInSeconds);
+            leaderboard.forEach((entry, idx) => {
+                let trophy = '';
+                if (idx === 0) trophy = '<span class="ranking-trophy">🏆</span>';
+                if (idx === 1) trophy = '<span class="ranking-trophy">🏆</span>';
+                if (idx === 2) trophy = '<span class="ranking-trophy">🏆</span>';
+                const minutes = String(Math.floor(entry.timeInSeconds / 60)).padStart(2, '0');
+                const seconds = String(entry.timeInSeconds % 60).padStart(2, '0');
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="p-2 font-bold">${idx+1}</td>
+                    <td class="p-2">${entry.name} ${trophy}</td>
+                    <td class="p-2">${minutes}:${seconds}</td>
+                `;
+                leaderboardBody.appendChild(row);
+            });
+        }
+
         // --- Flujo del Juego ---
+        function handleSubmitScore() {
+            const playerName = playerNameInput.value.trim();
+            if (playerName) {
+                addScoreToLeaderboard(playerName, finalTimeInSeconds);
+                endGameModal.classList.add('hidden');
+                gameView.classList.add('hidden');
+                timerElement.classList.add('hidden');
+                subtitle.classList.add('hidden');
+                leaderboardView.classList.remove('hidden');
+                showLeaderboard();
+                resetButton.textContent = 'Jugar de Nuevo';
+            } else {
+                alert("Por favor, ingresa un nombre.");
+            }
+        }
+
         function checkSelection() {
             if (selection.length <= 1) {
                 document.querySelectorAll('.selecting').forEach(el => el.classList.remove('selecting'));
@@ -132,7 +226,10 @@
             selection = [];
             if (foundWords.length === wordsToFind.length) {
                 stopTimer();
-                alert("¡Juego terminado! Has encontrado todas las palabras.");
+                finalTimeInSeconds = Math.floor((Date.now() - startTime) / 1000);
+                endGameModal.classList.remove('hidden');
+                playerNameInput.value = '';
+                playerNameInput.focus();
             }
         }
 
@@ -281,11 +378,18 @@
         }
 
         const handleResetClick = () => {
+            if (resetButton.textContent === 'Jugar de Nuevo') {
+                leaderboardView.classList.add('hidden');
+                gameView.classList.remove('hidden');
+                timerElement.classList.remove('hidden');
+                subtitle.classList.remove('hidden');
+                resetButton.textContent = 'Reiniciar';
+            }
             stopTimer();
             init();
         };
 
-        // --- Arranque: agrega eventos según el dispositivo ---
+        // --- Arranque ---
         if (isTouchDevice()) {
             gridContainer.addEventListener('touchstart', handleSelectionStart, {passive: false});
             gridContainer.addEventListener('touchmove', handleSelectionMove, {passive: false});
@@ -296,6 +400,10 @@
             window.addEventListener('pointerup', handleSelectionEnd);
         }
         resetButton.addEventListener('click', handleResetClick);
+        submitScoreButton.addEventListener('click', handleSubmitScore);
+        playerNameInput.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') handleSubmitScore();
+        });
 
         init();
     </script>
