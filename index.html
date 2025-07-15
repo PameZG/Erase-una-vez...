@@ -207,20 +207,38 @@
                 }
             }
         }
+
+        // --- Compatibilidad móvil y escritorio ---
+        function isTouchDevice() {
+            return 'ontouchstart' in window || navigator.maxTouchPoints;
+        }
+
         function handleSelectionStart(e) {
             e.preventDefault();
-            const target = e.target.closest('.grid-cell');
-            if (target) {
+            let target;
+            if (e.touches) {
+                target = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+            } else {
+                target = e.target.closest('.grid-cell');
+            }
+            if (target && target.classList.contains('grid-cell')) {
                 isSelecting = true;
                 selection = [target];
                 target.classList.add('selecting');
             }
         }
+
         function handleSelectionMove(e) {
             e.preventDefault();
             if (!isSelecting) return;
-            const clientX = e.pointerType === 'touch' ? e.touches[0].clientX : e.clientX;
-            const clientY = e.pointerType === 'touch' ? e.touches[0].clientY : e.clientY;
+            let clientX, clientY;
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
             const target = document.elementFromPoint(clientX, clientY);
             if (target && target.classList.contains('grid-cell')) {
                 document.querySelectorAll('.selecting').forEach(el => el.classList.remove('selecting'));
@@ -234,6 +252,7 @@
                 selection.forEach(cell => cell.classList.add('selecting'));
             }
         }
+
         function handleSelectionEnd(e) {
             e.preventDefault();
             if (isSelecting) {
@@ -241,6 +260,7 @@
                 checkSelection();
             }
         }
+
         function getCellsBetween(startRow, startCol, endRow, endCol) {
             const cells = [];
             const dx = Math.sign(endCol - startCol);
@@ -259,15 +279,24 @@
             }
             return cells;
         }
+
         const handleResetClick = () => {
             stopTimer();
             init();
         };
-        // --- Arranque ---
-        gridContainer.addEventListener('pointerdown', handleSelectionStart);
-        gridContainer.addEventListener('pointermove', handleSelectionMove);
-        window.addEventListener('pointerup', handleSelectionEnd);
+
+        // --- Arranque: agrega eventos según el dispositivo ---
+        if (isTouchDevice()) {
+            gridContainer.addEventListener('touchstart', handleSelectionStart, {passive: false});
+            gridContainer.addEventListener('touchmove', handleSelectionMove, {passive: false});
+            window.addEventListener('touchend', handleSelectionEnd, {passive: false});
+        } else {
+            gridContainer.addEventListener('pointerdown', handleSelectionStart);
+            gridContainer.addEventListener('pointermove', handleSelectionMove);
+            window.addEventListener('pointerup', handleSelectionEnd);
+        }
         resetButton.addEventListener('click', handleResetClick);
+
         init();
     </script>
 </body>
