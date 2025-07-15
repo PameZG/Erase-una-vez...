@@ -173,10 +173,7 @@
             let leaderboard = getLeaderboard();
             leaderboard.sort((a, b) => a.timeInSeconds - b.timeInSeconds);
             leaderboard.forEach((entry, idx) => {
-                let trophy = '';
-                if (idx === 0) trophy = '<span class="ranking-trophy">🏆</span>';
-                if (idx === 1) trophy = '<span class="ranking-trophy">🏆</span>';
-                if (idx === 2) trophy = '<span class="ranking-trophy">🏆</span>';
+                let trophy = (idx < 3) ? '<span class="ranking-trophy">🏆</span>' : '';
                 const minutes = String(Math.floor(entry.timeInSeconds / 60)).padStart(2, '0');
                 const seconds = String(entry.timeInSeconds % 60).padStart(2, '0');
                 const row = document.createElement('tr');
@@ -190,6 +187,12 @@
         }
 
         // --- Flujo del Juego ---
+        function showEndGameModal() {
+            endGameModal.classList.remove('hidden');
+            resetButton.style.display = 'none'; // Oculta el botón de reinicio
+            playerNameInput.value = '';
+            playerNameInput.focus();
+        }
         function handleSubmitScore() {
             const playerName = playerNameInput.value.trim();
             if (playerName) {
@@ -200,7 +203,7 @@
                 subtitle.classList.add('hidden');
                 leaderboardView.classList.remove('hidden');
                 showLeaderboard();
-                resetButton.textContent = 'Jugar de Nuevo';
+                resetButton.style.display = 'none'; // Oculta el botón también en el ranking
             } else {
                 alert("Por favor, ingresa un nombre.");
             }
@@ -227,9 +230,7 @@
             if (foundWords.length === wordsToFind.length) {
                 stopTimer();
                 finalTimeInSeconds = Math.floor((Date.now() - startTime) / 1000);
-                endGameModal.classList.remove('hidden');
-                playerNameInput.value = '';
-                playerNameInput.focus();
+                showEndGameModal();
             }
         }
 
@@ -249,6 +250,12 @@
             fillEmptySpaces();
             renderGrid();
             startTimer();
+            gameView.classList.remove('hidden');
+            leaderboardView.classList.add('hidden');
+            timerElement.classList.remove('hidden');
+            subtitle.classList.remove('hidden');
+            resetButton.textContent = 'Reiniciar';
+            resetButton.style.display = ''; // Solo mostrar durante el juego
         }
 
         function placeWords() {
@@ -378,13 +385,6 @@
         }
 
         const handleResetClick = () => {
-            if (resetButton.textContent === 'Jugar de Nuevo') {
-                leaderboardView.classList.add('hidden');
-                gameView.classList.remove('hidden');
-                timerElement.classList.remove('hidden');
-                subtitle.classList.remove('hidden');
-                resetButton.textContent = 'Reiniciar';
-            }
             stopTimer();
             init();
         };
@@ -400,7 +400,13 @@
             window.addEventListener('pointerup', handleSelectionEnd);
         }
         resetButton.addEventListener('click', handleResetClick);
+
+        // Guardar puntuación con click y touchstart
         submitScoreButton.addEventListener('click', handleSubmitScore);
+        submitScoreButton.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            handleSubmitScore();
+        });
         playerNameInput.addEventListener('keyup', function(e) {
             if (e.key === 'Enter') handleSubmitScore();
         });
