@@ -63,7 +63,7 @@
         <div class="text-center mb-8">
             <h1 class="text-4xl md:text-5xl font-bold text-indigo-800 title-font">Sopa de Letras</h1>
             <p id="subtitle" class="text-gray-600 mt-2">Encuentra las palabras ocultas basándote en las pistas.</p>
-            <div id="timer" class="text-3xl font-bold text-indigo-500 mt-4">10:00</div>
+            <div id="timer" class="text-3xl font-bold text-indigo-500 mt-4">00:00</div>
         </div>
         <div id="game-view">
             <div class="w-full flex justify-center items-center mb-8">
@@ -120,20 +120,21 @@
 
         let grid = [], isSelecting = false, selection = [], foundWords = [];
         let timerInterval;
-        let timeLeft = 10 * 60; // 10 minutos en segundos
+        let elapsedTime = 0; // Cronómetro ascendente
         let finalTimeInSeconds = 0;
         let gameFinished = false;
+        let maxTime = 10 * 60; // 10 minutos en segundos
 
-        // --- Cronómetro (cuenta regresiva de 10 min) ---
+        // --- Cronómetro ascendente (cuenta cuánto tiempo llevas) ---
         function startTimer() {
-            timeLeft = 10 * 60;
-            timerElement.textContent = formatTime(timeLeft);
+            elapsedTime = 0;
+            timerElement.textContent = formatTime(elapsedTime);
             timerInterval = setInterval(() => {
-                timeLeft--;
-                timerElement.textContent = formatTime(timeLeft);
-                if (timeLeft <= 0) {
+                elapsedTime++;
+                timerElement.textContent = formatTime(elapsedTime);
+                if (elapsedTime >= maxTime) {
                     stopTimer();
-                    finalTimeInSeconds = 10 * 60;
+                    finalTimeInSeconds = maxTime;
                     showEndGameModal(true); // true = se acabó el tiempo
                 }
             }, 1000);
@@ -187,7 +188,7 @@
             playerResultDiv.innerHTML = `
                 <div class="bg-teal-50 p-6 rounded-lg shadow mt-8 inline-block">
                     <h2 class="text-2xl font-bold text-teal-800 mb-4">¡Felicidades!</h2>
-                    <p class="text-lg text-gray-700"><b>${name}</b> terminó en <b>${min}:${sec}</b></p>
+                    <p class="text-lg text-gray-700"><b>${name}</b> terminó la sopa de letras en <b>${min}:${sec}</b></p>
                 </div>
             `;
         }
@@ -213,7 +214,7 @@
             selection = [];
             if (foundWords.length === wordsToFind.length && !gameFinished) {
                 stopTimer();
-                finalTimeInSeconds = 10 * 60 - timeLeft;
+                finalTimeInSeconds = elapsedTime;
                 showEndGameModal();
             }
         }
