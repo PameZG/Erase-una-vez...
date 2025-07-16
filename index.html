@@ -44,7 +44,6 @@
             background-color: white; padding: 2rem; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
             text-align: center; max-width: 90%; width: 400px; position: relative; z-index: 1001;
         }
-        .ranking-trophy { font-size: 1.5em; vertical-align: middle; color: #FFD700; }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4">
@@ -81,7 +80,6 @@
                 Reiniciar
             </button>
         </div>
-        <div id="player-result" class="text-center mt-8"></div>
     </div>
 
     <script>
@@ -95,7 +93,6 @@
         const wordListContainer = document.getElementById('word-list');
         const resetButton = document.getElementById('reset-button');
         const gameView = document.getElementById('game-view');
-        const playerResultDiv = document.getElementById('player-result');
         const endModalTitle = document.getElementById('end-modal-title');
         const endModalMsg = document.getElementById('end-modal-msg');
 
@@ -171,26 +168,19 @@
         function handleSubmitScore() {
             const playerName = playerNameInput.value.trim();
             if (playerName) {
-                endGameModal.classList.add('hidden');
-                gameView.classList.remove('hidden');
-                timerElement.classList.add('hidden');
-                subtitle.classList.add('hidden');
-                showPlayerResult(playerName, finalTimeInSeconds);
-                resetButton.style.display = 'none';
+                showFelicitacionEnModal(playerName, finalTimeInSeconds);
             } else {
                 alert("Por favor, ingresa un nombre.");
             }
         }
 
-        function showPlayerResult(name, seconds) {
+        function showFelicitacionEnModal(name, seconds) {
             let min = String(Math.floor(seconds / 60)).padStart(2, '0');
             let sec = String(seconds % 60).padStart(2, '0');
-            playerResultDiv.innerHTML = `
-                <div class="bg-teal-50 p-6 rounded-lg shadow mt-8 inline-block">
-                    <h2 class="text-2xl font-bold text-teal-800 mb-4">¡Felicidades!</h2>
-                    <p class="text-lg text-gray-700"><b>${name}</b> terminó la sopa de letras en <b>${min}:${sec}</b></p>
-                </div>
-            `;
+            endModalTitle.textContent = '¡Felicidades!';
+            endModalMsg.innerHTML = `<b>${name}</b> terminó la sopa de letras en <b>${min}:${sec}</b>`;
+            playerNameInput.style.display = 'none';
+            submitScoreButton.style.display = 'none';
         }
 
         // --- Flujo del Juego ---
@@ -223,7 +213,6 @@
             gridContainer.innerHTML = '';
             wordListContainer.innerHTML = '';
             foundWords = [];
-            playerResultDiv.innerHTML = '';
             gameFinished = false;
             wordsWithClues.forEach(item => {
                 const li = document.createElement('li');
