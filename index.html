@@ -49,11 +49,11 @@
 </head>
 <body class="flex items-center justify-center min-h-screen p-4">
 
-    <!-- Modal para pedir nombre -->
+    <!-- Modal para pedir nombre o mostrar fin de tiempo -->
     <div id="end-game-modal" class="modal-backdrop hidden">
         <div class="modal-content">
-            <h2 class="text-2xl font-bold text-indigo-700 mb-4">¡Juego Terminado!</h2>
-            <p class="text-gray-600 mb-4">Ingresa tu nombre para guardar tu tiempo en la tabla de clasificación.</p>
+            <h2 id="end-modal-title" class="text-2xl font-bold text-indigo-700 mb-4"></h2>
+            <p id="end-modal-msg" class="text-gray-600 mb-4"></p>
             <input type="text" id="player-name-input" class="border-2 border-gray-300 p-2 rounded-md w-full mb-4" placeholder="Tu nombre..." maxlength="25">
             <button id="submit-score-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg w-full">Guardar Puntuación</button>
         </div>
@@ -63,7 +63,7 @@
         <div class="text-center mb-8">
             <h1 class="text-4xl md:text-5xl font-bold text-indigo-800 title-font">Sopa de Letras</h1>
             <p id="subtitle" class="text-gray-600 mt-2">Encuentra las palabras ocultas basándote en las pistas.</p>
-            <div id="timer" class="text-3xl font-bold text-indigo-500 mt-4">00:00</div>
+            <div id="timer" class="text-3xl font-bold text-indigo-500 mt-4">10:00</div>
         </div>
         <div id="game-view">
             <div class="w-full flex justify-center items-center mb-8">
@@ -76,28 +76,12 @@
                 </div>
             </div>
         </div>
-        <div id="leaderboard-view" class="hidden">
-            <div class="w-full md:w-3/4 lg:w-2/3 mx-auto">
-                <div class="bg-teal-50 p-6 rounded-lg h-full">
-                    <h2 class="text-2xl font-bold text-teal-800 mb-4 text-center">🏆 Tabla de Clasificación 🏆</h2>
-                    <table class="w-full text-left">
-                        <thead>
-                            <tr class="border-b-2 border-teal-200">
-                                <th class="p-2">#</th>
-                                <th class="p-2">Nombre</th>
-                                <th class="p-2">Tiempo</th>
-                            </tr>
-                        </thead>
-                        <tbody id="leaderboard-body"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
         <div class="text-center mt-6">
             <button id="reset-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">
                 Reiniciar
             </button>
         </div>
+        <div id="player-result" class="text-center mt-8"></div>
     </div>
 
     <script>
@@ -110,9 +94,10 @@
         const gridContainer = document.getElementById('word-search-container');
         const wordListContainer = document.getElementById('word-list');
         const resetButton = document.getElementById('reset-button');
-        const leaderboardBody = document.getElementById('leaderboard-body');
         const gameView = document.getElementById('game-view');
-        const leaderboardView = document.getElementById('leaderboard-view');
+        const playerResultDiv = document.getElementById('player-result');
+        const endModalTitle = document.getElementById('end-modal-title');
+        const endModalMsg = document.getElementById('end-modal-msg');
 
         // --- Variables del Juego ---
         const wordsWithClues = [
@@ -135,80 +120,79 @@
 
         let grid = [], isSelecting = false, selection = [], foundWords = [];
         let timerInterval;
-        let startTime;
+        let timeLeft = 10 * 60; // 10 minutos en segundos
         let finalTimeInSeconds = 0;
+        let gameFinished = false;
 
-        // --- Cronómetro ---
+        // --- Cronómetro (cuenta regresiva de 10 min) ---
         function startTimer() {
-            startTime = Date.now();
+            timeLeft = 10 * 60;
+            timerElement.textContent = formatTime(timeLeft);
             timerInterval = setInterval(() => {
-                const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
-                const minutes = String(Math.floor(elapsedTime / 60)).padStart(2, '0');
-                const seconds = String(elapsedTime % 60).padStart(2, '0');
-                timerElement.textContent = `${minutes}:${seconds}`;
+                timeLeft--;
+                timerElement.textContent = formatTime(timeLeft);
+                if (timeLeft <= 0) {
+                    stopTimer();
+                    finalTimeInSeconds = 10 * 60;
+                    showEndGameModal(true); // true = se acabó el tiempo
+                }
             }, 1000);
         }
         function stopTimer() {
             clearInterval(timerInterval);
         }
-
-        // --- Ranking usando localStorage ---
-        function getLeaderboard() {
-            let data = [];
-            try {
-                data = JSON.parse(localStorage.getItem('wordsearch-leaderboard')) || [];
-            } catch (e) { data = []; }
-            return data;
-        }
-        function saveLeaderboard(data) {
-            localStorage.setItem('wordsearch-leaderboard', JSON.stringify(data));
-        }
-        function addScoreToLeaderboard(name, timeInSeconds) {
-            const leaderboard = getLeaderboard();
-            leaderboard.push({ name, timeInSeconds });
-            saveLeaderboard(leaderboard);
-        }
-        function showLeaderboard() {
-            leaderboardBody.innerHTML = '';
-            let leaderboard = getLeaderboard();
-            leaderboard.sort((a, b) => a.timeInSeconds - b.timeInSeconds);
-            leaderboard.forEach((entry, idx) => {
-                let trophy = (idx < 3) ? '<span class="ranking-trophy">🏆</span>' : '';
-                const minutes = String(Math.floor(entry.timeInSeconds / 60)).padStart(2, '0');
-                const seconds = String(entry.timeInSeconds % 60).padStart(2, '0');
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td class="p-2 font-bold">${idx+1}</td>
-                    <td class="p-2">${entry.name} ${trophy}</td>
-                    <td class="p-2">${minutes}:${seconds}</td>
-                `;
-                leaderboardBody.appendChild(row);
-            });
+        function formatTime(sec) {
+            let m = String(Math.floor(sec / 60)).padStart(2, '0');
+            let s = String(sec % 60).padStart(2, '0');
+            return `${m}:${s}`;
         }
 
-        // --- Flujo del Juego ---
-        function showEndGameModal() {
+        // --- Modal adaptado ---
+        function showEndGameModal(timeEnded = false) {
             endGameModal.classList.remove('hidden');
-            resetButton.style.display = 'none'; // Oculta el botón de reinicio
+            resetButton.style.display = 'none';
             playerNameInput.value = '';
-            playerNameInput.focus();
+            gameFinished = true;
+            if (timeEnded) {
+                endModalTitle.textContent = '¡Oops! Se acabó el tiempo.';
+                endModalMsg.textContent = '¡Gracias por participar!';
+                playerNameInput.style.display = 'none';
+                submitScoreButton.style.display = 'none';
+            } else {
+                endModalTitle.textContent = '¡Juego Terminado!';
+                endModalMsg.textContent = 'Ingresa tu nombre para guardar tu tiempo.';
+                playerNameInput.style.display = '';
+                submitScoreButton.style.display = '';
+                playerNameInput.focus();
+            }
         }
+
         function handleSubmitScore() {
             const playerName = playerNameInput.value.trim();
             if (playerName) {
-                addScoreToLeaderboard(playerName, finalTimeInSeconds);
                 endGameModal.classList.add('hidden');
-                gameView.classList.add('hidden');
+                gameView.classList.remove('hidden');
                 timerElement.classList.add('hidden');
                 subtitle.classList.add('hidden');
-                leaderboardView.classList.remove('hidden');
-                showLeaderboard();
-                resetButton.style.display = 'none'; // Oculta el botón también en el ranking
+                showPlayerResult(playerName, finalTimeInSeconds);
+                resetButton.style.display = 'none';
             } else {
                 alert("Por favor, ingresa un nombre.");
             }
         }
 
+        function showPlayerResult(name, seconds) {
+            let min = String(Math.floor(seconds / 60)).padStart(2, '0');
+            let sec = String(seconds % 60).padStart(2, '0');
+            playerResultDiv.innerHTML = `
+                <div class="bg-teal-50 p-6 rounded-lg shadow mt-8 inline-block">
+                    <h2 class="text-2xl font-bold text-teal-800 mb-4">¡Felicidades!</h2>
+                    <p class="text-lg text-gray-700"><b>${name}</b> terminó en <b>${min}:${sec}</b></p>
+                </div>
+            `;
+        }
+
+        // --- Flujo del Juego ---
         function checkSelection() {
             if (selection.length <= 1) {
                 document.querySelectorAll('.selecting').forEach(el => el.classList.remove('selecting'));
@@ -227,9 +211,9 @@
             }
             document.querySelectorAll('.selecting').forEach(el => el.classList.remove('selecting'));
             selection = [];
-            if (foundWords.length === wordsToFind.length) {
+            if (foundWords.length === wordsToFind.length && !gameFinished) {
                 stopTimer();
-                finalTimeInSeconds = Math.floor((Date.now() - startTime) / 1000);
+                finalTimeInSeconds = 10 * 60 - timeLeft;
                 showEndGameModal();
             }
         }
@@ -238,6 +222,8 @@
             gridContainer.innerHTML = '';
             wordListContainer.innerHTML = '';
             foundWords = [];
+            playerResultDiv.innerHTML = '';
+            gameFinished = false;
             wordsWithClues.forEach(item => {
                 const li = document.createElement('li');
                 li.textContent = item.clue;
@@ -251,11 +237,10 @@
             renderGrid();
             startTimer();
             gameView.classList.remove('hidden');
-            leaderboardView.classList.add('hidden');
             timerElement.classList.remove('hidden');
             subtitle.classList.remove('hidden');
             resetButton.textContent = 'Reiniciar';
-            resetButton.style.display = ''; // Solo mostrar durante el juego
+            resetButton.style.display = '';
         }
 
         function placeWords() {
@@ -401,7 +386,6 @@
         }
         resetButton.addEventListener('click', handleResetClick);
 
-        // Guardar puntuación con click y touchstart
         submitScoreButton.addEventListener('click', handleSubmitScore);
         submitScoreButton.addEventListener('touchstart', function(e) {
             e.preventDefault();
